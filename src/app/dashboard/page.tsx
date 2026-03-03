@@ -9,6 +9,7 @@ import {
     TrendingUp,
     ArrowDownToLine,
     ArrowUpFromLine,
+    AlertCircle,
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -42,12 +43,7 @@ function MetricCard({
                             <p className="text-xs text-zinc-400">{subtitle}</p>
                         )}
                     </div>
-                    <div
-                        className={cn(
-                            "flex items-center justify-center w-10 h-10 rounded-xl",
-                            accent
-                        )}
-                    >
+                    <div className={cn("flex items-center justify-center w-10 h-10 rounded-xl", accent)}>
                         <Icon className="w-5 h-5 opacity-90" />
                     </div>
                 </div>
@@ -70,12 +66,7 @@ function Badge({
         return: "bg-orange-50 text-orange-700 border-orange-200",
     };
     return (
-        <span
-            className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border",
-                styles[variant]
-            )}
-        >
+        <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border", styles[variant])}>
             {variant === "inward" && <ArrowDownToLine className="w-3 h-3" />}
             {variant === "outward" && <ArrowUpFromLine className="w-3 h-3" />}
             {variant === "return" && <Undo2 className="w-3 h-3" />}
@@ -84,13 +75,37 @@ function Badge({
     );
 }
 
+// ─── DB Not Configured Banner ─────────────────────────────────────────────────
+function DbError() {
+    return (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-start gap-3 text-amber-800">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+                <p className="font-semibold text-sm">Database not connected</p>
+                <p className="text-xs mt-0.5 text-amber-700">
+                    Add a <code className="font-mono bg-amber-100 px-1 rounded">DATABASE_URL</code> environment variable in Vercel → Project Settings → Environment Variables, then redeploy.
+                </p>
+            </div>
+        </div>
+    );
+}
+
 // ─── Dashboard Page (Server Component) ───────────────────────────────────────
 export default async function DashboardPage() {
-    const [metrics, liveStock, transactions] = await Promise.all([
-        getDashboardMetrics(),
-        getLiveStock(),
-        getTransactionLog(),
-    ]);
+    let metrics = { totalSalesVolume: 0, totalRevenue: 0, totalReturns: 0, influencerOutflow: 0 };
+    let liveStock: Awaited<ReturnType<typeof getLiveStock>> = [];
+    let transactions: Awaited<ReturnType<typeof getTransactionLog>> = [];
+    let dbError = false;
+
+    try {
+        [metrics, liveStock, transactions] = await Promise.all([
+            getDashboardMetrics(),
+            getLiveStock(),
+            getTransactionLog(),
+        ]);
+    } catch {
+        dbError = true;
+    }
 
     const sizes = ["S", "M", "L", "XL"];
 
@@ -99,10 +114,10 @@ export default async function DashboardPage() {
             {/* Header */}
             <div>
                 <h1 className="text-2xl font-bold text-zinc-900">Dashboard</h1>
-                <p className="text-sm text-zinc-500 mt-0.5">
-                    Real-time analytics and inventory overview
-                </p>
+                <p className="text-sm text-zinc-500 mt-0.5">Real-time analytics and inventory overview</p>
             </div>
+
+            {dbError && <DbError />}
 
             {/* ── Metric Cards ── */}
             <section>
@@ -142,79 +157,45 @@ export default async function DashboardPage() {
             <section>
                 <div className="flex items-center gap-2 mb-3">
                     <TrendingUp className="w-4 h-4 text-zinc-500" />
-                    <h2 className="text-base font-semibold text-zinc-800">
-                        Live Inventory
-                    </h2>
-                    <span className="ml-auto text-xs text-zinc-400">
-                        Stock = Inward − Outward + Returns
-                    </span>
+                    <h2 className="text-base font-semibold text-zinc-800">Live Inventory</h2>
+                    <span className="ml-auto text-xs text-zinc-400">Stock = Inward − Outward + Returns</span>
                 </div>
-
                 <Card>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-zinc-100">
-                                    <th className="text-left px-5 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide whitespace-nowrap">
-                                        Product
-                                    </th>
-                                    <th className="text-left px-3 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide whitespace-nowrap">
-                                        SKU
-                                    </th>
+                                    <th className="text-left px-5 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide whitespace-nowrap">Product</th>
+                                    <th className="text-left px-3 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide whitespace-nowrap">SKU</th>
                                     {sizes.map((s) => (
-                                        <th
-                                            key={s}
-                                            className="text-center px-4 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide"
-                                        >
-                                            {s}
-                                        </th>
+                                        <th key={s} className="text-center px-4 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide">{s}</th>
                                     ))}
-                                    <th className="text-center px-5 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide">
-                                        Total
-                                    </th>
+                                    <th className="text-center px-5 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide">Total</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {liveStock.length === 0 ? (
                                     <tr>
-                                        <td
-                                            colSpan={7}
-                                            className="text-center py-12 text-zinc-400 text-sm"
-                                        >
-                                            No products yet. Add products in Operations.
+                                        <td colSpan={7} className="text-center py-12 text-zinc-400 text-sm">
+                                            {dbError ? "Connect the database to see inventory." : "No products yet. Add products in Operations."}
                                         </td>
                                     </tr>
                                 ) : (
                                     liveStock.map(({ product, sizes: sizeData, total }) => (
-                                        <tr
-                                            key={product.id}
-                                            className="border-b border-zinc-50 hover:bg-zinc-50/60 transition-colors"
-                                        >
-                                            <td className="px-5 py-3.5 font-medium text-zinc-900 whitespace-nowrap">
-                                                {product.name}
-                                            </td>
-                                            <td className="px-3 py-3.5 text-zinc-400 font-mono text-xs whitespace-nowrap">
-                                                {product.sku}
-                                            </td>
+                                        <tr key={product.id} className="border-b border-zinc-50 hover:bg-zinc-50/60 transition-colors">
+                                            <td className="px-5 py-3.5 font-medium text-zinc-900 whitespace-nowrap">{product.name}</td>
+                                            <td className="px-3 py-3.5 text-zinc-400 font-mono text-xs whitespace-nowrap">{product.sku}</td>
                                             {sizeData.map(({ size, stock }) => (
                                                 <td key={size} className="px-4 py-3.5 text-center">
-                                                    <span
-                                                        className={cn(
-                                                            "inline-block min-w-[2rem] px-2 py-0.5 rounded-lg font-semibold text-center",
-                                                            stock === 0
-                                                                ? "bg-red-50 text-red-500"
-                                                                : stock <= 5
-                                                                    ? "bg-amber-50 text-amber-700"
-                                                                    : "bg-emerald-50 text-emerald-700"
-                                                        )}
-                                                    >
+                                                    <span className={cn(
+                                                        "inline-block min-w-[2rem] px-2 py-0.5 rounded-lg font-semibold text-center",
+                                                        stock === 0 ? "bg-red-50 text-red-500" : stock <= 5 ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                                                    )}>
                                                         {stock}
                                                     </span>
                                                 </td>
                                             ))}
-                                            <td className="px-5 py-3.5 text-center font-bold text-zinc-900">
-                                                {total}
-                                            </td>
+                                            <td className="px-5 py-3.5 text-center font-bold text-zinc-900">{total}</td>
                                         </tr>
                                     ))
                                 )}
@@ -227,91 +208,47 @@ export default async function DashboardPage() {
             {/* ── Master Transaction Log ── */}
             <section>
                 <div className="flex items-center gap-2 mb-3">
-                    <h2 className="text-base font-semibold text-zinc-800">
-                        Transaction Log
-                    </h2>
+                    <h2 className="text-base font-semibold text-zinc-800">Transaction Log</h2>
                     <span className="ml-2 px-2 py-0.5 bg-zinc-100 rounded-full text-xs text-zinc-500 font-medium">
                         {transactions.length} records
                     </span>
                 </div>
-
                 <Card>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-zinc-100">
-                                    {[
-                                        "Date & Time",
-                                        "Type",
-                                        "Product",
-                                        "Size",
-                                        "Qty",
-                                        "Recipient",
-                                        "Amount",
-                                    ].map((h) => (
-                                        <th
-                                            key={h}
-                                            className="text-left px-4 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide whitespace-nowrap"
-                                        >
-                                            {h}
-                                        </th>
+                                    {["Date & Time", "Type", "Product", "Size", "Qty", "Recipient", "Amount"].map((h) => (
+                                        <th key={h} className="text-left px-4 py-3 font-semibold text-zinc-500 uppercase text-xs tracking-wide whitespace-nowrap">{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {transactions.length === 0 ? (
                                     <tr>
-                                        <td
-                                            colSpan={7}
-                                            className="text-center py-12 text-zinc-400 text-sm"
-                                        >
-                                            No transactions yet.
+                                        <td colSpan={7} className="text-center py-12 text-zinc-400 text-sm">
+                                            {dbError ? "Connect the database to see transactions." : "No transactions yet."}
                                         </td>
                                     </tr>
                                 ) : (
                                     transactions.map((t) => (
-                                        <tr
-                                            key={t.id}
-                                            className="border-b border-zinc-50 hover:bg-zinc-50/60 transition-colors"
-                                        >
-                                            <td className="px-4 py-3 text-zinc-400 text-xs whitespace-nowrap">
-                                                {formatDate(t.createdAt)}
-                                            </td>
+                                        <tr key={t.id} className="border-b border-zinc-50 hover:bg-zinc-50/60 transition-colors">
+                                            <td className="px-4 py-3 text-zinc-400 text-xs whitespace-nowrap">{formatDate(t.createdAt)}</td>
                                             <td className="px-4 py-3 whitespace-nowrap">
-                                                <Badge
-                                                    variant={
-                                                        t.type === "INWARD"
-                                                            ? "inward"
-                                                            : t.type === "OUTWARD"
-                                                                ? "outward"
-                                                                : "return"
-                                                    }
-                                                >
+                                                <Badge variant={t.type === "INWARD" ? "inward" : t.type === "OUTWARD" ? "outward" : "return"}>
                                                     {t.type}
                                                 </Badge>
                                             </td>
-                                            <td className="px-4 py-3 font-medium text-zinc-800 whitespace-nowrap">
-                                                {t.product.name}
-                                            </td>
+                                            <td className="px-4 py-3 font-medium text-zinc-800 whitespace-nowrap">{t.product.name}</td>
                                             <td className="px-4 py-3">
-                                                <span className="inline-block px-2 py-0.5 bg-zinc-100 rounded text-xs font-semibold text-zinc-600">
-                                                    {t.size}
-                                                </span>
+                                                <span className="inline-block px-2 py-0.5 bg-zinc-100 rounded text-xs font-semibold text-zinc-600">{t.size}</span>
                                             </td>
-                                            <td className="px-4 py-3 font-semibold text-zinc-900">
-                                                {t.quantity}
-                                            </td>
+                                            <td className="px-4 py-3 font-semibold text-zinc-900">{t.quantity}</td>
                                             <td className="px-4 py-3 text-zinc-500 whitespace-nowrap text-xs">
-                                                {t.recipientType === "CUSTOMER" && t.customer
-                                                    ? `${t.customer.name}`
-                                                    : t.recipientType === "INFLUENCER"
-                                                        ? "⭐ Influencer"
-                                                        : "—"}
+                                                {t.recipientType === "CUSTOMER" && t.customer ? t.customer.name : t.recipientType === "INFLUENCER" ? "⭐ Influencer" : "—"}
                                             </td>
                                             <td className="px-4 py-3 font-medium text-zinc-800 whitespace-nowrap">
-                                                {t.amountPaid > 0
-                                                    ? formatCurrency(t.amountPaid)
-                                                    : "—"}
+                                                {t.amountPaid > 0 ? formatCurrency(t.amountPaid) : "—"}
                                             </td>
                                         </tr>
                                     ))

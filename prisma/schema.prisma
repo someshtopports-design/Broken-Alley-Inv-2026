@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -27,16 +27,16 @@ model Customer {
 }
 
 model Transaction {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   productId     String
-  product       Product  @relation(fields: [productId], references: [id])
+  product       Product   @relation(fields: [productId], references: [id])
   type          String
-  recipientType String   @default("NONE")
+  recipientType String    @default("NONE")
   size          String
   quantity      Int
-  amountPaid    Float    @default(0)
+  amountPaid    Float     @default(0)
   reason        String?
   customerId    String?
   customer      Customer? @relation(fields: [customerId], references: [id])
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 }
