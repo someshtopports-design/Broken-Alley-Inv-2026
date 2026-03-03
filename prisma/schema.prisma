@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  name         String
+  sku          String        @unique
+  createdAt    DateTime      @default(now())
+  transactions Transaction[]
+}
+
+model Customer {
+  id            String        @id @default(cuid())
+  name          String
+  mobile        String        @unique
+  area          String        @default("")
+  purchaseCount Int           @default(0)
+  isPremium     Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+  type          String
+  recipientType String   @default("NONE")
+  size          String
+  quantity      Int
+  amountPaid    Float    @default(0)
+  reason        String?
+  customerId    String?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  createdAt     DateTime @default(now())
+}
